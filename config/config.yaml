@@ -1,0 +1,90 @@
+device:
+  type: "cuda"
+
+paths:
+  signals: ".data/binary/signals.npy"
+  labels: ".data/binary/labels.npy"
+  csv: ".data/raw/train/REFERENCE.csv"
+  data: ".data/raw/train/"
+
+data:
+  length: 9000
+  labels:
+    N: 0
+    A: 1
+    O: 2
+    "~": 3
+  splits:
+    test: 0.2
+    validation: 0.2
+    state: 19
+  targets: [ "Normal", "AF", "Other", "Noisy" ]
+
+train:
+  onedcnn:
+    model:
+      seq_length: 9000
+      classes: 4
+      kernel: 3
+      convolutional:
+        - channels: 64
+        - channels: 128
+        - channels: 128
+      hidden_dim: 256
+    training:
+      criterion: "CrossEntropyLoss"
+      optimizer: "Adam"
+      lr: 0.001
+      epochs: 23
+      batch: 8
+
+  advancedonedcnn:
+    model:
+      seq_length: 9000
+      classes: 4
+      kernel: 3
+      convolutional:
+        - channels: 64
+        - channels: 128
+        - channels: 128
+      hidden_dim: 512
+    training:
+      criterion: "CrossEntropyLoss"
+      optimizer: "Adam"
+      lr: 0.001
+      epochs: 23
+      batch: 8
+
+  onedselfonn:
+    model:
+      seq_length: 9000
+      classes: 4
+      kernel: 3
+      convolutional:
+        - channels: 64
+        - channels: 128
+        - channels: 128
+      hidden_dim: 256
+    training:
+      criterion: "CrossEntropyLoss"
+      optimizer: "Adam"
+      lr: 0.001
+      epochs: 23
+      batch: 8
+
+  advancedonedselfonn:
+    model:
+      seq_length: 9000
+      classes: 4
+      kernel: 3
+      convolutional:
+        - channels: 64
+        - channels: 128
+        - channels: 128
+      hidden_dim: 512
+    training:
+      criterion: "CrossEntropyLoss"
+      optimizer: "Adam"
+      lr: 0.001
+      epochs: 23
+      batch: 8
