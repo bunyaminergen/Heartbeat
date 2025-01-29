@@ -177,6 +177,9 @@ class OneDCNN(nn.Module):
 
         self.gelu = nn.GELU()
 
+        self.dropout_conv = nn.Dropout(p=0.2)
+        self.dropout_fc = nn.Dropout(p=0.3)
+
     def forward(
             self,
             x: Annotated[torch.Tensor, "Input tensor of shape (batch, 1, seq_length)"]
@@ -226,6 +229,7 @@ class OneDCNN(nn.Module):
         x = self.conv1b(x)
         x = self.bn1b(x)
         x = self.gelu(x)
+        x = self.dropout_conv(x)
 
         x = self.conv2a(x)
         x = self.bn2a(x)
@@ -235,6 +239,7 @@ class OneDCNN(nn.Module):
         x = self.bn2b(x)
         x = self.gelu(x)
         x = self.pool1(x)
+        x = self.dropout_conv(x)
 
         x = self.conv3a(x)
         x = self.bn3a(x)
@@ -244,10 +249,14 @@ class OneDCNN(nn.Module):
         x = self.bn3b(x)
         x = self.gelu(x)
         x = self.pool2(x)
+        x = self.dropout_conv(x)
 
         x = x.view(x.size(0), -1)
 
-        x = self.gelu(self.fc1(x))
+        x = self.fc1(x)
+        x = self.gelu(x)
+        x = self.dropout_fc(x)
+
         x = self.fc2(x)
 
         return x
@@ -427,6 +436,9 @@ class AdvancedOneDCNN(nn.Module):
 
         self.gelu = nn.GELU()
 
+        self.dropout_conv = nn.Dropout(p=0.2)
+        self.dropout_fc = nn.Dropout(p=0.3)
+
     def forward(
             self,
             x: Annotated[torch.Tensor, "Input tensor of shape (batch, 1, seq_length)"]
@@ -472,16 +484,19 @@ class AdvancedOneDCNN(nn.Module):
         out1 = self.block1(x)
         out1 = out1 + self.shortcut1(x)
         out1 = self.gelu(out1)
+        out1 = self.dropout_conv(out1)
 
         out2 = self.block2(out1)
         out2 = out2 + self.shortcut2(out1)
         out2 = self.gelu(out2)
         out2 = self.pool1(out2)
+        out2 = self.dropout_conv(out2)
 
         out3 = self.block3(out2)
         out3 = out3 + self.shortcut3(out2)
         out3 = self.gelu(out3)
         out3 = self.pool2(out3)
+        out3 = self.dropout_conv(out3)
 
         out3 = out3.permute(0, 2, 1)
         out4 = self.transformer(out3)
@@ -489,7 +504,10 @@ class AdvancedOneDCNN(nn.Module):
 
         out4_flat = out4.reshape(out4.size(0), -1)
 
-        out = self.gelu(self.fc1(out4_flat))
+        out = self.fc1(out4_flat)
+        out = self.gelu(out)
+        out = self.dropout_fc(out)
+
         out = self.fc2(out)
         return out
 
@@ -769,8 +787,12 @@ class OneDSelfONN(nn.Module):
         self.pool2 = nn.MaxPool1d(2)
 
         flatten_dim = conv3_out * (seq_length // 4)
+
         self.fc1 = nn.Linear(flatten_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, num_classes)
+
+        self.dropout_conv = nn.Dropout(p=0.2)
+        self.dropout_fc = nn.Dropout(p=0.3)
 
         self.gelu = nn.GELU()
 
@@ -816,18 +838,22 @@ class OneDSelfONN(nn.Module):
 
         x = self.block1(x)
         x = self.act1(x)
+        x = self.dropout_conv(x)
 
         x = self.block2(x)
         x = self.act2(x)
         x = self.pool1(x)
+        x = self.dropout_conv(x)
 
         x = self.block3(x)
         x = self.act3(x)
         x = self.pool2(x)
+        x = self.dropout_conv(x)
 
         x = x.view(x.size(0), -1)
 
         x = self.gelu(self.fc1(x))
+        x = self.dropout_fc(x)
         x = self.fc2(x)
         return x
 
@@ -1185,6 +1211,9 @@ class AdvancedOneDSelfONN(nn.Module):
         self.fc2 = nn.Linear(hidden_dim, num_classes)
         self.gelu = nn.GELU()
 
+        self.dropout_conv = nn.Dropout(p=0.2)
+        self.dropout_fc = nn.Dropout(p=0.3)
+
     def forward(
             self,
             x: Annotated[torch.Tensor, "Input of shape (batch, 1, seq_length)"]
@@ -1227,19 +1256,23 @@ class AdvancedOneDSelfONN(nn.Module):
 
         x = self.block1(x)
         x = self.act1(x)
+        x = self.dropout_conv(x)
         x = self.pool1(x)
 
         x = self.block2(x)
         x = self.act2(x)
+        x = self.dropout_conv(x)
         x = self.pool2(x)
 
         x = self.block3(x)
         x = self.act3(x)
+        x = self.dropout_conv(x)
         x = self.pool3(x)
 
         x = x.view(x.size(0), -1)
 
         x = self.gelu(self.fc1(x))
+        x = self.dropout_fc(x)
         x = self.fc2(x)
 
         return x
