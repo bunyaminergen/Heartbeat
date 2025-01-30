@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 
 # Local imports
-from src.model.model import OneDSelfONN
+from src.model.model import OneDCNN
 from src.utils.log.manager import LoggerManager
 from src.utils.data.manager import DataManager, DatasetLoader
 from src.model.train import Trainer, InverseFrequencyClassWeighting
@@ -39,9 +39,9 @@ def main() -> Annotated[None, "This function does not return anything"]:
     config_path = "config/config.yaml"
     config = OmegaConf.load(config_path)
     device = config.device.type
-    batch_size = config.train.onedselfonn.training.batch
-    model = OneDSelfONN(config.train.onedselfonn.model).to(device)
-    trainer_config = config.train.onedselfonn.training
+    batch_size = config.train.onedcnn.training.batch
+    model = OneDCNN(config.train.onedcnn.model).to(device)
+    trainer_config = config.train.onedcnn.training
 
     # Initialize classes
     logger = LoggerManager(console_level=logging.INFO).get_logger()
