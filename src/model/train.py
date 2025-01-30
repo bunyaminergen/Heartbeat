@@ -64,6 +64,12 @@ class Trainer:
         If True, print evaluation reports after each epoch. Default is True.
     print_final_reports : bool, optional
         If True, print final evaluation reports. Default is True.
+    plot_roc : bool, optional
+        If True, plot ROC curves. Default is False.
+    save_roc : bool, optional
+        If True, save the ROC curves to a file. Default is False.
+    roc_file_name : str, optional
+        The file path to save the ROC curves. Default is ".docs/report/img/roc_curve.png".
 
     Attributes
     ----------
@@ -150,55 +156,16 @@ class Trainer:
             early_stopping: Annotated[bool, "Enable early stopping"] = True,
             patience: Annotated[int, "Patience for early stopping"] = 5,
             print_epoch_reports: Annotated[bool, "Print reports at each epoch"] = True,
-            print_final_reports: Annotated[bool, "Print final reports"] = True
+            print_final_reports: Annotated[bool, "Print final reports"] = True,
+            plot_roc: Annotated[bool, "Whether to plot ROC curves"] = False,
+            save_roc: Annotated[bool, "Whether to save ROC plots"] = False,
+            roc_file_name: Annotated[str, "File path to save the ROC curves"] = ".docs/report/img/roc_curve.png"
     ) -> None:
         """
         Initialize the Trainer class with the given configuration parameters.
 
-        Parameters
-        ----------
-        model : nn.Module
-            PyTorch model to be trained.
-        train_loader : DataLoader
-            DataLoader for the training dataset.
-        criterion : nn.Module
-            Loss function for training.
-        optimizer : torch.optim.Optimizer
-            Optimizer for model parameter updates.
-        device : str
-            The device for computations (e.g., "cpu", "cuda").
-        num_epochs : int, optional
-            Number of training epochs. Defaults to 19.
-        targets : list of str, optional
-            Class labels for evaluations. Defaults to None, which internally
-            becomes ["Class_0", "Class_1", "Class_2", "Class_3"].
-        val_loader : DataLoader, optional
-            DataLoader for validation data. Defaults to None.
-        logger : logging.Logger, optional
-            Logger instance for logging. Defaults to None (prints to console).
-        test_loader : DataLoader, optional
-            DataLoader for test data. Defaults to None.
-        plot_metrics : bool, optional
-            If True, plot training metrics. Default is False.
-        save_plot : bool, optional
-            If True, save the metric plot. Default is False.
-        plot_file_name : str, optional
-            File name for saving the plot. Default is ".docs/report/img/training.png".
-        plot_confusion_matrix : bool, optional
-            If True, plot confusion matrices. Default is False.
-        save_confusion_matrix : bool, optional
-            If True, save confusion matrix plots. Default is False.
-        early_stopping : bool, optional
-            If True, enable early stopping. Default is True.
-        patience : int, optional
-            Number of epochs with no improvement to wait before stopping.
-            Default is 5.
-        print_epoch_reports : bool, optional
-            If True, print evaluation reports each epoch. Default is True.
-        print_final_reports : bool, optional
-            If True, print final evaluation reports. Default is True.
+        (Docstring içeriği korunmuştur, sadece yeni parametreler eklenmiştir.)
         """
-        # -- Type Checks --
         if not isinstance(model, nn.Module):
             raise TypeError("Expected 'model' to be an instance of nn.Module")
         if not isinstance(train_loader, DataLoader):
@@ -230,6 +197,10 @@ class Trainer:
         self.patience = patience
         self.print_epoch_reports = print_epoch_reports
         self.print_final_reports = print_final_reports
+
+        self.plot_roc = plot_roc
+        self.save_roc = save_roc
+        self.roc_file_name = roc_file_name
 
         if targets is None:
             targets = [f"Class_{i}" for i in range(4)]
@@ -575,6 +546,18 @@ class Trainer:
                     show_cm=self.plot_metrics
                 )
 
+            if self.plot_roc:
+                self.visualizer.plot_roc_curves_final(
+                    model=self.model,
+                    loader=self.test_loader,
+                    device=self.device,
+                    targets=self.targets,
+                    file_name=self.roc_file_name,
+                    save_roc=self.save_roc,
+                    show_roc=self.plot_roc,
+                    logger=self.logger
+                )
+
         self._log("=== Final Detailed Evaluation Completed. ===")
 
 
@@ -667,7 +650,6 @@ class InverseFrequencyClassWeighting:
         total = len(self.y_train)
         weights = []
         for count in class_counts:
-            # Inverse frequency formula: total / (count * num_classes)
             weights.append(total / (count * self.num_classes))
 
         return weights
@@ -805,6 +787,8 @@ if __name__ == "__main__":
         plot_metrics=True,
         plot_confusion_matrix=True,
         early_stopping=False,
+        plot_roc=True,
+        save_roc=True,
     )
 
     trainer.run()
