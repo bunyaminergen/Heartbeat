@@ -35,8 +35,8 @@ train:
       criterion: "CrossEntropyLoss"
       optimizer: "Adam"
       lr: 0.001
-      epochs: 23
-      batch: 8
+      epochs: 3
+      batch: 64
 
   advancedonedcnn:
     model:
