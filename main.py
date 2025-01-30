@@ -127,13 +127,14 @@ def main() -> Annotated[None, "This function does not return anything"]:
         plot_confusion_matrix=True,
         save_confusion_matrix=True,
         early_stopping=False,
+        plot_roc=True,
+        save_roc=True,
     )
 
     logger.info("Trainer created, training is starting...")
     torch.autograd.set_detect_anomaly(True)
     trainer.run()
 
-    # Evaluation
     logger.info("=== Final Test Evaluation ===")
     trainer.evaluate(-1, test_loader, mode="Test")
     logger.info("=== Completed. ===")
