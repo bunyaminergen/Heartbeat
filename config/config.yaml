@@ -19,11 +19,15 @@ data:
     validation: 0.2
     state: 19
   targets: [ "Normal", "AF", "Other", "Noisy" ]
+  segment:
+    overlap:
+      window: 600
+      step: 400
 
 train:
   onedcnn:
     model:
-      seq_length: 9000
+      seq_length: 600
       classes: 4
       kernel: 3
       convolutional:
@@ -35,12 +39,12 @@ train:
       criterion: "CrossEntropyLoss"
       optimizer: "Adam"
       lr: 0.001
-      epochs: 23
+      epochs: 29
       batch: 8
 
   advancedonedcnn:
     model:
-      seq_length: 9000
+      seq_length: 600
       classes: 4
       kernel: 3
       convolutional:
@@ -52,12 +56,12 @@ train:
       criterion: "CrossEntropyLoss"
       optimizer: "Adam"
       lr: 0.001
-      epochs: 23
+      epochs: 29
       batch: 8
 
   onedselfonn:
     model:
-      seq_length: 9000
+      seq_length: 600
       classes: 4
       kernel: 3
       convolutional:
@@ -69,12 +73,12 @@ train:
       criterion: "CrossEntropyLoss"
       optimizer: "Adam"
       lr: 0.001
-      epochs: 23
+      epochs: 29
       batch: 8
 
   advancedonedselfonn:
     model:
-      seq_length: 9000
+      seq_length: 600
       classes: 4
       kernel: 3
       convolutional:
@@ -86,5 +90,5 @@ train:
       criterion: "CrossEntropyLoss"
       optimizer: "Adam"
       lr: 0.001
-      epochs: 23
+      epochs: 29
       batch: 8

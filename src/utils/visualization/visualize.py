@@ -9,7 +9,7 @@ import numpy as np
 import torch.nn as nn
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, roc_curve, auc
 from torch.utils.data import DataLoader, TensorDataset
 
 
@@ -272,13 +272,13 @@ class Visualizer:
         all_labels = []
 
         with torch.no_grad():
-            for inputs, labels in loader:
+            for inputs, labels_ in loader:
                 inputs = inputs.to(device)
-                labels = labels.to(device)
+                labels_ = labels_.to(device)
                 outputs = model(inputs)
                 _, predicted = torch.max(outputs, dim=1)
                 all_preds.append(predicted.cpu().numpy())
-                all_labels.append(labels.cpu().numpy())
+                all_labels.append(labels_.cpu().numpy())
 
         all_preds = np.concatenate(all_preds)
         all_labels = np.concatenate(all_labels)
@@ -311,6 +311,110 @@ class Visualizer:
             plt.show()
 
         plt.close()
+
+    def plot_roc_curves_final(
+            self,
+            model: Annotated[nn.Module, "PyTorch model"],
+            loader: Annotated[torch.utils.data.DataLoader, "DataLoader providing input and labels"],
+            device: Annotated[str, "Device for computation (e.g., 'cpu' or 'cuda')"],
+            targets: Annotated[List[str], "List of class labels"],
+            file_name: Annotated[str, "File name to save ROC curve"] = ".docs/img/roc_curve.png",
+            save_roc: Annotated[bool, "Whether to save the ROC curve plot"] = False,
+            show_roc: Annotated[bool, "Whether to display the ROC curve plot"] = False,
+            logger: Annotated[Optional[logging.Logger], "Logger for logging within this method"] = None
+    ) -> None:
+        """
+        Plot ROC curves for each class (One-vs-Rest) and optionally save or show the figure.
+
+        This method evaluates the given model on the provided DataLoader, computes
+        predicted probabilities (via softmax), and for each class, plots the ROC curve
+        treating that class as "positive" and others as "negative".
+
+        Parameters
+        ----------
+        model : torch.nn.Module
+            The PyTorch model to evaluate.
+        loader : torch.utils.data.DataLoader
+            DataLoader providing (input, label) batches.
+        device : str
+            The device on which to perform computation (e.g., 'cpu', 'cuda').
+        targets : list of str
+            Class labels for legend.
+        file_name : str, optional
+            File path to save the ROC curve plot. Defaults to ".docs/img/roc_curve.png".
+        save_roc : bool, optional
+            If True, saves the ROC curve plot. Defaults to False.
+        show_roc : bool, optional
+            If True, displays the ROC curve plot. Defaults to False.
+        logger : logging.Logger, optional
+            Logger instance for logging messages. If None, uses the class-level logger.
+
+        Returns
+        -------
+        None
+            This function does not return anything.
+        """
+        logger = logger or self.logger
+        model.eval()
+
+        all_probs = []
+        all_labels = []
+
+        with torch.no_grad():
+            for inputs, labels_ in loader:
+                inputs = inputs.to(device)
+                labels_ = labels_.to(device)
+
+                outputs = model(inputs)
+                probabilities = torch.softmax(outputs, dim=1).cpu().numpy()
+
+                all_probs.append(probabilities)
+                all_labels.append(labels_.cpu().numpy())
+
+        all_probs = np.concatenate(all_probs, axis=0)
+        all_labels = np.concatenate(all_labels, axis=0)
+        num_classes = all_probs.shape[1]
+
+        plt.figure(figsize=(7, 6))
+
+        for class_idx in range(num_classes):
+            labels_bin = np.where(all_labels == class_idx, 1, 0)
+            probs_bin = all_probs[:, class_idx]
+
+            try:
+                fpr, tpr, _ = roc_curve(labels_bin, probs_bin)
+                roc_auc = auc(fpr, tpr)
+
+                if class_idx < len(targets):
+                    class_name = targets[class_idx]
+                else:
+                    class_name = f"Class_{class_idx}"
+
+                plt.plot(fpr, tpr, lw=2, label=f"{class_name} (AUC={roc_auc:.3f})")
+            except ValueError as e:
+                if logger:
+                    logger.warning(f"Skipping ROC for class_idx={class_idx}, reason: {e}")
+
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('ROC Curves (One-vs-Rest)')
+        plt.legend(loc="lower right")
+
+        if save_roc:
+            dir_name = os.path.dirname(file_name)
+            if dir_name and not os.path.exists(dir_name):
+                os.makedirs(dir_name, exist_ok=True)
+            plt.savefig(file_name, dpi=150)
+            if logger:
+                logger.info(f"[Visualizer] Saved ROC curves to: {file_name}")
+
+        if show_roc:
+            plt.show()
+        else:
+            plt.close()
 
 
 if __name__ == "__main__":
@@ -427,4 +531,14 @@ if __name__ == "__main__":
         show_cm=True,
     )
 
-    logger_test.info("Confusion matrix creation and saving completed.")
+    visualizer_test.plot_roc_curves_final(
+        model=models_test,
+        loader=loaders_test,
+        device=device_test,
+        targets=class_names,
+        file_name=".docs/img/roc_curve_example.png",
+        save_roc=True,
+        show_roc=True,
+    )
+
+    logger_test.info("Confusion matrix & ROC curve creation and saving completed.")

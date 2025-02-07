@@ -71,6 +71,7 @@ please read the [CONTRIBUTING](.docs/documentation/CONTRIBUTING.md) first._
 ![Final Train Confusion Matrix](.docs/report/img/confusion_matrix_train.png)
 ![Final Validation Confusion Matrix](.docs/report/img/confusion_matrix_val.png)
 ![Training Curves](.docs/report/img/training.png)
+![ROC Curve](.docs/report/img/roc_curve.png)
 
 ##### Benchmark
 
@@ -270,6 +271,7 @@ aws s3 sync --no-sign-request s3://physionet-open/challenge-2017/1.0.0/validatio
 │                 ├── confusion_matrix_test.png
 │                 ├── confusion_matrix_train.png
 │                 ├── confusion_matrix_val.png
+│                 ├── roc_curve.png
 │                 └── training.png
 ├── environment.yaml
 ├── .gitignore

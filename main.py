@@ -12,9 +12,10 @@ from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 
 # Local imports
-from src.model.model import OneDSelfONN
+from src.model.model import OneDCNN
 from src.utils.log.manager import LoggerManager
 from src.utils.data.manager import DataManager, DatasetLoader
+from src.feature.segmentation import OverlapSegment
 from src.model.train import Trainer, InverseFrequencyClassWeighting
 
 
@@ -39,9 +40,12 @@ def main() -> Annotated[None, "This function does not return anything"]:
     config_path = "config/config.yaml"
     config = OmegaConf.load(config_path)
     device = config.device.type
-    batch_size = config.train.onedselfonn.training.batch
-    model = OneDSelfONN(config.train.onedselfonn.model).to(device)
-    trainer_config = config.train.onedselfonn.training
+    batch_size = config.train.onedcnn.training.batch
+    model = OneDCNN(config.train.onedcnn.model).to(device)
+    trainer_config = config.train.onedcnn.training
+    overlap_segment_config = config.data.segment.overlap
+    window_size = overlap_segment_config.window
+    step_size = overlap_segment_config.step
 
     # Initialize classes
     logger = LoggerManager(console_level=logging.INFO).get_logger()
@@ -64,7 +68,7 @@ def main() -> Annotated[None, "This function does not return anything"]:
     x_temp, x_test, y_temp, y_test = train_test_split(
         all_signals_np,
         all_labels_np,
-        test_size=0.2,
+        test_size=config.data.splits.test,
         stratify=all_labels_np,
         random_state=config.data.splits.state
     )
@@ -72,7 +76,7 @@ def main() -> Annotated[None, "This function does not return anything"]:
     x_train, x_val, y_train, y_val = train_test_split(
         x_temp,
         y_temp,
-        test_size=0.25,
+        test_size=config.data.splits.validation,
         stratify=y_temp,
         random_state=config.data.splits.state
     )
@@ -81,22 +85,37 @@ def main() -> Annotated[None, "This function does not return anything"]:
     logger.info(f"Validation shape: {x_val.shape}, {y_val.shape}")
     logger.info(f"Test shape: {x_test.shape}, {y_test.shape}")
 
-    train_dataset = DatasetLoader(x_train, y_train)
-    val_dataset = DatasetLoader(x_val, y_val)
-    test_dataset = DatasetLoader(x_test, y_test)
+    # Segmentation
+    logger.info(f"Using OverlapSegment => window={window_size}, step={step_size}")
+
+    overlap_seg = OverlapSegment(
+        window=window_size,
+        step=step_size,
+        pad=True
+    )
+
+    x_train_seg, y_train_seg = overlap_seg.overlap_split(x_train, y_train)
+    x_val_seg, y_val_seg = overlap_seg.overlap_split(x_val, y_val)
+    x_test_seg, y_test_seg = overlap_seg.overlap_split(x_test, y_test)
+
+    logger.info(f"[Overlap] Train={x_train_seg.shape}, Val={x_val_seg.shape}, Test={x_test_seg.shape}")
+
+    train_dataset = DatasetLoader(x_train_seg, y_train_seg)
+    val_dataset = DatasetLoader(x_val_seg, y_val_seg)
+    test_dataset = DatasetLoader(x_test_seg, y_test_seg)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     # Inverse-Frequency Class Weighting & Loss
-    unique_classes = np.unique(y_train)
+    unique_classes = np.unique(y_train_seg)
     num_classes = len(unique_classes)
     class_counts = [np.sum(y_train == c) for c in unique_classes]
     logger.info(f"Class distributions (train): {class_counts}")
 
     ifcw = InverseFrequencyClassWeighting(
-        y_train=y_train,
+        y_train=y_train_seg,
         num_classes=num_classes
     )
     class_weights_tensor = ifcw.get_weight_tensor(device=device)
@@ -127,13 +146,15 @@ def main() -> Annotated[None, "This function does not return anything"]:
         plot_confusion_matrix=True,
         save_confusion_matrix=True,
         early_stopping=False,
+        plot_roc=True,
+        save_roc=True,
     )
 
-    logger.info("Trainer created, training is starting...")
+    logger.info("Training is starting...")
     torch.autograd.set_detect_anomaly(True)
     trainer.run()
 
-    # Evaluation
+    # Final test evaluation
     logger.info("=== Final Test Evaluation ===")
     trainer.evaluate(-1, test_loader, mode="Test")
     logger.info("=== Completed. ===")
