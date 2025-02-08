@@ -13,6 +13,7 @@ from sklearn.model_selection import train_test_split
 
 # Local imports
 from src.model.model import OneDCNN
+from src.feature.normalization import Normalize
 from src.utils.log.manager import LoggerManager
 from src.utils.data.manager import DataManager, DatasetLoader
 from src.feature.segmentation import OverlapSegment
@@ -98,11 +99,42 @@ def main() -> Annotated[None, "This function does not return anything"]:
     x_val_seg, y_val_seg = overlap_seg.overlap_split(x_val, y_val)
     x_test_seg, y_test_seg = overlap_seg.overlap_split(x_test, y_test)
 
-    logger.info(f"[Overlap] Train={x_train_seg.shape}, Val={x_val_seg.shape}, Test={x_test_seg.shape}")
+    logger.info(
+        f"[Overlap] Train={x_train_seg.shape}, Val={x_val_seg.shape}, Test={x_test_seg.shape}"
+    )
 
-    train_dataset = DatasetLoader(x_train_seg, y_train_seg)
-    val_dataset = DatasetLoader(x_val_seg, y_val_seg)
-    test_dataset = DatasetLoader(x_test_seg, y_test_seg)
+    # Normalization
+    normalizer = Normalize(logger=logger)
+
+    x_train_peak = normalizer.peak(x_train_seg)
+    x_val_peak = normalizer.peak(x_val_seg)
+    x_test_peak = normalizer.peak(x_test_seg)
+
+    global_mean = float(np.mean(x_train_peak))
+    global_std = float(np.std(x_train_peak))
+
+    x_train_norm = normalizer.zscore(
+        x_train_peak,
+        mode='global',
+        global_mean=global_mean,
+        global_std=global_std
+    )
+    x_val_norm = normalizer.zscore(
+        x_val_peak,
+        mode='global',
+        global_mean=global_mean,
+        global_std=global_std
+    )
+    x_test_norm = normalizer.zscore(
+        x_test_peak,
+        mode='global',
+        global_mean=global_mean,
+        global_std=global_std
+    )
+
+    train_dataset = DatasetLoader(x_train_norm, y_train_seg)
+    val_dataset = DatasetLoader(x_val_norm, y_val_seg)
+    test_dataset = DatasetLoader(x_test_norm, y_test_seg)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
